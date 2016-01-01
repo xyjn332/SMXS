@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SchemeUserState</key>
+	<dict>
+		<key>QDBMPloginViewControllerDemo.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<true/>
+			<key>orderHint</key>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>937FF6761B733FDA0032D6BA</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>93E0B0941B3A84C40071EC62</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>93E0B0AD1B3A84C40071EC62</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+	</dict>
+</dict>
+</plist>

@@ -1,0 +1,18 @@
+//
+//  PrefixHeader.pch
+//  QDBMPloginViewControllerDemo
+//
+//  Created by Weber on 15/7/15.
+//  Copyright (c) 2015年 tsci. All rights reserved.
+//
+
+#ifndef QDBMPloginViewControllerDemo_PrefixHeader_pch
+#define QDBMPloginViewControllerDemo_PrefixHeader_pch
+
+// Include any system framework and library headers here that should be included in all compilation units.
+// You will also need to set the Prefix Header build setting of one or more of your targets to reference this file.
+
+
+#import "QDTool.h"
+#import "QDStockSingletonConfigTools.h" //券商配置类
+#endif

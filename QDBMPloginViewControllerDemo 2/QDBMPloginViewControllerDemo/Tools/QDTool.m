@@ -1,0 +1,382 @@
+//
+//  QDTool.m
+//  QDBMPloginViewControllerDemo
+//
+//  Created by Weber on 15/6/24.
+//  Copyright (c) 2015年 tsci. All rights reserved.
+//
+
+#import "QDTool.h"
+#import "QDTradeSystemConstDefination.h"
+#import <CoreText/CoreText.h>
+
+
+@implementation DateWithFormat
+
++(NSDateFormatter*)sharedManager{
+    
+    static NSDateFormatter *animManager = nil;
+    static dispatch_once_t predicate;
+    dispatch_once(&predicate, ^{
+        animManager = [[NSDateFormatter alloc]init];
+    });
+    return animManager;
+}
+@end
+
+@implementation QDTool
+
+
+
+#pragma mark -
+#pragma mark 16进制颜色转换为UIColor
+
++(UIColor *) hexStringToColor: (NSString *) stringToConvert
+{
+    NSString *cString = [[stringToConvert stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] uppercaseString];
+    if ([cString hasPrefix:@"#"]) cString = [cString substringFromIndex:1];
+    if ([cString length] != 6) return [UIColor blackColor];
+    
+    NSRange range;
+    range.location = 0;
+    range.length = 2;
+    NSString *rString = [cString substringWithRange:range];
+    range.location = 2;
+    NSString *gString = [cString substringWithRange:range];
+    range.location = 4;
+    NSString *bString = [cString substringWithRange:range];
+    unsigned int r, g, b;
+    
+    [[NSScanner scannerWithString:rString] scanHexInt:&r];
+    [[NSScanner scannerWithString:gString] scanHexInt:&g];
+    [[NSScanner scannerWithString:bString] scanHexInt:&b];
+    
+    return [UIColor colorWithRed:((float) r / 255.0f)
+                           green:((float) g / 255.0f)
+                            blue:((float) b / 255.0f)
+                           alpha:1.0f];
+}
+
+
+
++(CGSize)getStringSizeWithString:(NSString*)evalContent font:(UIFont*)fontSize lableHeight:(CGFloat)height width:(CGFloat)width{
+    CGSize textSize=CGSizeZero;
+    if(evalContent.length==0)
+    {
+        return textSize;
+    }
+    NSMutableAttributedString *attStr=[[NSMutableAttributedString alloc]initWithString:evalContent];
+    [attStr addAttribute:NSFontAttributeName value:fontSize range:NSMakeRange(0, attStr.length)];
+    NSRange range=NSMakeRange(0, attStr.length);
+    NSDictionary *dic=[attStr attributesAtIndex:0 effectiveRange:&range];
+    textSize=[evalContent boundingRectWithSize:CGSizeMake(width, height) options:NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading attributes:dic context:nil].size;
+    
+    return textSize;
+}
+//动态获得字体大小
++ (CGFloat)sizeWithFontForGivingString:(NSString *)string fontsize:(NSInteger)size width:(CGFloat)wid{
+    CGFloat fontSizeThatFits=14;
+    
+    [string sizeWithFont:[UIFont systemFontOfSize:size]
+                   minFontSize:1.0
+                actualFontSize:&fontSizeThatFits
+                      forWidth:wid
+                 lineBreakMode:NSLineBreakByTruncatingTail];
+    return fontSizeThatFits;
+}
+
+
++(void)adjustIOS7NavigationController:(UIViewController*)vc
+{
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 70000
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0)
+    {
+        vc.edgesForExtendedLayout = UIRectEdgeNone;                         ///选择UIRectedgenone，视图的内容不会延伸到navigationbar的后面，就是不会顶穿导航栏
+        vc.extendedLayoutIncludesOpaqueBars = NO;                           ///这个属性指定了当bar使用了不透明图片时，视图是否延伸到bar所在区域，默认为NO
+        vc.modalPresentationCapturesStatusBarAppearance = NO;
+    }
+#endif
+}
+
+//给数字加“,”分割符  (待优化)
++ (NSString *)trimStringAmount:(NSString *)amount{
+    NSMutableString *strTemp = [NSMutableString stringWithString:amount];
+    int index = 0;
+    BOOL flag = YES;
+    BOOL start = NO;
+    BOOL sign  = NO;
+    for(NSInteger i=strTemp.length-1; i>=0; i--){
+        if([strTemp characterAtIndex:i] == '.'){
+            flag = NO;
+        }
+        if (([strTemp characterAtIndex:i] == '+'||[strTemp characterAtIndex:i] == '-')&&i == 0) {
+            sign = YES;
+        }
+    }
+    for(NSInteger i=strTemp.length-1; i>=0; i--){
+        if(flag){
+            index++;
+            if (sign) {
+                if(index == 3 && i!=0&&i!=1){
+                    [strTemp insertString:@"," atIndex:i];
+                    index = 0;
+                }
+            }
+            else{
+                if(index == 3 && i!=0){
+                    [strTemp insertString:@"," atIndex:i];
+                    index = 0;
+                }
+            }
+
+            
+        }else{
+            if(start){
+                index++;
+                if (sign) {
+                    if(index == 3 && i!=0&&i!=1){
+                        [strTemp insertString:@"," atIndex:i];
+                        index = 0;
+                    }
+                }
+                else{
+                    if(index == 3 && i!=0){
+                        [strTemp insertString:@"," atIndex:i];
+                        index = 0;
+                    }
+                }
+            }
+            if([strTemp characterAtIndex:i] == '.'){
+                start = YES;
+            }
+        }
+    }
+    return strTemp;
+}
+
+//判断是否越狱的一种方法，查看所有安装文件，非越狱不可查看
++ (BOOL)isPrisonBreak{
+    if([[NSFileManager defaultManager] fileExistsAtPath:@"/User/Applications/"]){
+        NSLog(@"The device is prison break!");
+        NSArray *applist = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"/User/Applications" error:nil];
+        NSLog(@"%@", applist);
+        return YES;
+    }
+    NSLog(@"The device is not prison break!");
+    return NO;
+}
+
+
+/************************************************************************************************
+ *此函数的功能是获得数字和小数点颜色和字体不一致的情况.返回值不适用于UILabel控件，取而代之是TTTAttributedLabel
+ * @prama       value 传入要显示的值(double型)
+ *              ic   整数部分的颜色（integer color）
+ *              dc   小数部分颜色（decimal color）
+ *              ifz  整数部分字体大小（integer font size）
+ *              dfz  小数部分字体大小 （decimal font size）
+ *              hf   是否有前缀  0: 无  1: “+”  2: "-"
+ *              alignment  对齐方式
+ *  @return     转换后要显示的值
+ *  @note       fontsize 传得是字体大小值（NSInteger），而不是object
+ *              color    传得是object
+ *  @author     weber
+ *  @time       2015/07/29
+ *************************************************************************************************
+ */
++ (NSMutableAttributedString *)getAnomalyString:(double)value integerColor:(UIColor*)ic decimalColor:(UIColor*)dc  integerFontSize:(NSInteger)ifz decimalFontSize:(NSInteger)dfz haveSufix:(short)hf textAlignment:(NSTextAlignment)alignment{
+    
+    //排错
+//    if()
+    
+    
+    NSMutableString *tempString = [NSMutableString stringWithString: [QDTool trimStringAmount:[NSString stringWithFormat:@"%.2f", value]]];
+    if(hf == 1){//加号
+        //如果是负值
+        if(value > 0)
+            [tempString insertString:@"+" atIndex:0];
+    }else if(hf == 2){//减号
+        if(value > 0)
+            [tempString insertString:@"-" atIndex:0];
+    }
+    
+    NSMutableAttributedString *titleString = [[NSMutableAttributedString alloc] initWithString:tempString];
+    
+    
+    NSInteger integerPosition = titleString.length - 3;
+    NSInteger endPosition = titleString.length-1;
+    
+    [titleString addAttribute:(NSString*)kCTForegroundColorAttributeName value:ic range:NSMakeRange(0, integerPosition)];
+    [titleString addAttribute:(NSString*)kCTFontAttributeName value:[UIFont systemFontOfSize:ifz] range:NSMakeRange(0, integerPosition)];
+    
+    [titleString addAttribute:(NSString*)kCTForegroundColorAttributeName value:dc range:NSMakeRange(integerPosition, 3)];
+    [titleString addAttribute:(NSString*)kCTFontAttributeName value:[UIFont systemFontOfSize:dfz] range:NSMakeRange(integerPosition, 3)];
+    
+    NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
+    style.alignment = alignment;
+    [titleString addAttribute:(NSString*)kCTParagraphStyleAttributeName value:style range:NSMakeRange(0, titleString.length)];
+    return titleString;
+}
+
+
++(UILabel*)createLabelWithFrame:(CGRect)rect fontColor:(UIColor*)fontColor fontSize:(CGFloat)fontSize textAligment:(NSTextAlignment)textAligment
+{
+    UILabel *label=[[UILabel alloc] initWithFrame:rect];
+    label.font=[UIFont systemFontOfSize:fontSize];
+    label.textColor=fontColor;
+    label.backgroundColor=[UIColor clearColor];
+    label.adjustsFontSizeToFitWidth=YES;
+    label.textAlignment= textAligment;
+    
+    
+    return label;
+}
+
+
++ (NSString*)convertNumberToChinese:(double)value{
+    NSArray *unit = @[@"分", @"毛", @"元", @"十", @"百", @"千", @"万",@"十", @"百", @"千", @"亿", @"十"];
+    NSArray *base = @[@"零", @"一", @"二", @"三", @"四", @"五", @"六", @"七", @"八", @"九"];
+    
+    NSMutableString *number = [NSMutableString stringWithString:[NSString stringWithFormat:@"%.2f", value]];
+    
+    NSMutableString *result = [[NSMutableString alloc] initWithCapacity:number.length];
+    
+    
+    static NSInteger oldValue = 0;
+    int j = 0;
+    for (NSInteger i=number.length-1; i>=0; i--) {
+        if(![[NSString stringWithFormat:@"%c", [number characterAtIndex:i]] isEqualToString:@"."]){
+            
+            NSInteger value = [NSString stringWithFormat:@"%c", [number characterAtIndex:i]].integerValue;
+            
+            if(value>0){
+                if(oldValue == 0 && value == 1 && [unit[j] isEqualToString:@"十"]){
+                    [result insertString:unit[j] atIndex:0];
+                }else{
+                    [result insertString:unit[j] atIndex:0];
+                    [result insertString:base[value] atIndex:0];
+                }
+                
+                
+            }else{
+                if([unit[j] isEqualToString:@"元"]){
+                    [result insertString:@"元" atIndex:0];
+                }
+                if(oldValue != 0 && [unit[j] isEqualToString:@"十"]){
+                    [result insertString:@"零" atIndex:0];
+                    
+                }
+                if(oldValue != 0 && [unit[j] isEqualToString:@"百"]){
+                    [result insertString:@"零" atIndex:0];
+                    
+                }
+                
+                if([unit[j] isEqualToString:@"万"]){
+                    [result insertString:@"万" atIndex:0];
+                }
+        
+            }
+            oldValue = value;
+            j++;
+
+        }else{
+            if(result.length == 0){
+                [result insertString:@"整" atIndex:0];
+            }
+        }
+        
+   }
+    
+    if(value == 0){
+        [result insertString:@"零" atIndex:0];
+    }
+    return result;
+}
+
+
++ (UIControl*)createTitleNameWithTitleArray:(NSMutableArray*)titleArray height:(CGFloat)TableViewSectionHeight position:(CGFloat)distance isFist:(BOOL)isFirst index:(NSInteger)index fontSize:(CGFloat)fontSize{
+    
+    NSDictionary *dic = titleArray[index];//self.titleArray[index];
+    CGFloat sizeWidth = 0;
+    CGFloat sizeHeight = 0;
+    NSArray *keys = [dic allKeys];
+    UIControl *background = [UIControl new];
+    
+    UIImageView *ascendingImg = [UIImageView new];
+    ascendingImg.tag = 10003;
+    ascendingImg.hidden = YES;
+    ascendingImg.image = [UIImage imageNamed:@"icon_up"];
+    [background addSubview:ascendingImg];
+    
+    UIImageView *descendingImg = [UIImageView new];
+    descendingImg.tag = 10004;
+    descendingImg.hidden = YES;
+    descendingImg.image = [UIImage imageNamed:@"icon_down"];
+    [background addSubview:descendingImg];
+    
+    for(int i = 0; i<dic.count; i++){
+        NSString *title;
+        @try {
+            title = dic[keys[i]];
+        }
+        @catch (NSException *exception) {
+            NSLog(@"数组越界:%s", __FUNCTION__);
+            title = @"- -";
+        }
+        
+        CGSize temp = [QDTool getStringSizeWithString:title font:[UIFont systemFontOfSize:fontSize] lableHeight:1000 width:1000];
+        
+        if(i>0){
+            UILabel *seperator = [[UILabel alloc] initWithFrame:CGRectMake(sizeWidth, (AdjustHeight(TableViewSectionHeight)-temp.height)/2, AdjustWidth(4), temp.height)];
+            seperator.textColor = UIColorFromRGBA(0x676767, 1.0);
+            seperator.textAlignment = NSTextAlignmentLeft;
+            seperator.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+            seperator.text = @"/";
+            [background addSubview:seperator];
+            sizeWidth += AdjustWidth(4);
+        }
+        
+        
+        UILabel *name = [[UILabel alloc] initWithFrame:CGRectMake(sizeWidth, (AdjustHeight(TableViewSectionHeight)-temp.height)/2, temp.width, temp.height)];
+        name.tag = 10001+i;
+        name.textColor = UIColorFromRGBA(0x676767, 1.0);
+        name.textAlignment = NSTextAlignmentCenter;
+        name.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+        name.text = title;
+        [background addSubview:name];
+        
+        sizeHeight = CGRectGetMaxY(name.frame);
+        
+        
+        sizeWidth += temp.width;
+        //        position += sizeWidth;
+        if(isFirst && i == 0){
+            ascendingImg.frame = CGRectMake((name.frame.size.width-AdjustWidth(7))/2, name.frame.origin.y-AdjustHeight(4)-AdjustHeight(2), AdjustWidth(7), AdjustHeight(4));
+            descendingImg.frame = CGRectMake(ascendingImg.frame.origin.x, CGRectGetMaxY(name.frame)+AdjustHeight(2), AdjustWidth(7), AdjustHeight(4));
+        }else if(!isFirst && i==1){
+            ascendingImg.frame = CGRectMake(name.frame.origin.x+(name.frame.size.width -AdjustWidth(7))/2, name.frame.origin.y-AdjustHeight(4)-AdjustHeight(2), AdjustWidth(7), AdjustHeight(4));
+            descendingImg.frame = CGRectMake(ascendingImg.frame.origin.x, CGRectGetMaxY(name.frame)+AdjustHeight(2), AdjustWidth(7), AdjustHeight(4));
+        }
+    }
+    
+    UIImageView *arrowImg = [[UIImageView alloc] initWithFrame:CGRectMake(sizeWidth, sizeHeight-AdjustHeight(4), AdjustHeight(4), AdjustHeight(4))];
+    arrowImg.image = [UIImage imageNamed:@"icon_arrow"];
+    arrowImg.tag = 10005;
+    [background addSubview:arrowImg];
+    sizeWidth += arrowImg.frame.size.width;
+    
+    
+    background.frame = CGRectMake(distance, 0, sizeWidth, AdjustHeight(TableViewSectionHeight));
+    
+    return background;
+}
+
+
++ (NSString*)dateWithFormat:(NSDate*)format{
+   [[DateWithFormat sharedManager] setDateFormat:@"yyyy-MM-dd"];
+    NSString *temp = [[DateWithFormat sharedManager] stringFromDate:format];
+    return temp;
+}
+
+@end
+
+

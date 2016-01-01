@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 143
+/svn/wtc_iphone/!svn/ver/4545/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController
+END
+QDOrderBaseViewController.h
+K 25
+svn:wc:ra_dav:version-url
+V 171
+/svn/wtc_iphone/!svn/ver/4540/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController/QDOrderBaseViewController.h
+END
+QDOrderCannotDealViewController.m
+K 25
+svn:wc:ra_dav:version-url
+V 177
+/svn/wtc_iphone/!svn/ver/4540/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController/QDOrderCannotDealViewController.m
+END
+QDOrderBaseViewController.m
+K 25
+svn:wc:ra_dav:version-url
+V 171
+/svn/wtc_iphone/!svn/ver/4540/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController/QDOrderBaseViewController.m
+END
+QDOrderHasDealViewController.h
+K 25
+svn:wc:ra_dav:version-url
+V 174
+/svn/wtc_iphone/!svn/ver/4540/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController/QDOrderHasDealViewController.h
+END
+QDOrderHasDealViewController.m
+K 25
+svn:wc:ra_dav:version-url
+V 174
+/svn/wtc_iphone/!svn/ver/4545/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController/QDOrderHasDealViewController.m
+END
+QDOrderCannotDealViewController.h
+K 25
+svn:wc:ra_dav:version-url
+V 177
+/svn/wtc_iphone/!svn/ver/4540/branches/0301/weber/TheThirdUI/QDBMPloginViewControllerDemo/QDBMPloginViewControllerDemo/TradeOrderViewController/QDOrderCannotDealViewController.h
+END

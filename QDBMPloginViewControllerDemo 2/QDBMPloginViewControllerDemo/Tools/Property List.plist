@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>交易市场</key>
+		<string>港股</string>
+	</dict>
+	<dict>
+		<key>委托金额</key>
+		<string>28553.26</string>
+	</dict>
+	<dict>
+		<key>委托数量</key>
+		<string>1500</string>
+	</dict>
+	<dict>
+		<key>委托价格</key>
+		<string>0.02</string>
+	</dict>
+	<dict>
+		<key>委托类型</key>
+		<string>增强限价盘</string>
+	</dict>
+	<dict>
+		<key>证券名称</key>
+		<string>腾讯</string>
+	</dict>
+	<dict>
+		<key>证券代码</key>
+		<string>00700</string>
+	</dict>
+	<dict>
+		<key>证券操作</key>
+		<string>买入</string>
+	</dict>
+	<dict>
+		<key>委托编号</key>
+		<string>GGTTTTT0001.1205</string>
+	</dict>
+	<dict>
+		<key>客户编号</key>
+		<string>HKATTTTT001.0152</string>
+	</dict>
+</array>
+</plist>

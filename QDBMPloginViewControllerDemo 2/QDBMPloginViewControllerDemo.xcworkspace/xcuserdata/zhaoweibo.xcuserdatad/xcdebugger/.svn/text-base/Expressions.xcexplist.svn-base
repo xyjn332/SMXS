@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "-[QDTradeMoreViewController collectionView:cellForItemAtIndexPath:]:QDTradeMoreViewController.m">
+      </ContextState>
+      <ContextState
+         contextName = "-[QDTradeQueryTodayDelegateViewController holdingTitleAction:]:QDTradeQueryTodayDelegateViewController.m">
+         <PersistentStrings>
+            <PersistentString
+               value = "count">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>

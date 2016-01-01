@@ -1,0 +1,175 @@
+//
+//  QDHasDealViewController.m
+//  QDBMPloginViewControllerDemo
+//
+//  Created by Weber on 15/8/12.
+//  Copyright (c) 2015年 tsci. All rights reserved.
+//
+
+#import "QDOrderHasDealViewController.h"
+
+
+static const CGFloat TableViewRowHeight = 41;
+static const CGFloat TableViewSectionHeight = 20;
+
+@interface QDOrderHasDealViewController ()<UITableViewDataSource, UITableViewDelegate>
+
+@property (nonatomic, strong)UITableView *hasDealTableView;
+@property (nonatomic, strong)NSMutableArray *dataSource;
+
+@end
+
+@implementation QDOrderHasDealViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    [self initialize];
+    
+    [self createUI];
+    
+    
+}
+
+#pragma mark - initialize Data
+
+- (void)initialize{
+    self.dataSource = [NSMutableArray arrayWithCapacity:10];
+    [self.dataSource addObjectsFromArray:@[@1, @2, @3, @4, @5, @6]];
+}
+
+#pragma mark - createUI
+- (void)createUI{
+    _hasDealTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    _hasDealTableView.delegate = self;
+    _hasDealTableView.dataSource = self;
+    _hasDealTableView.backgroundColor = UIColorFromRGBA(0xe4e7e9, 1.0);
+    _hasDealTableView.tableFooterView = [[UIView alloc] init];
+    [self.view addSubview:_hasDealTableView];
+}
+
+- (void)viewWillLayoutSubviews{
+    [super viewWillLayoutSubviews];
+    self.hasDealTableView.frame = self.view.bounds;
+}
+
+#pragma mark - tableview datasource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return self.dataSource.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *cellIndentifier = @"cellIndentifier";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIndentifier];
+    if(cell == nil){
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellIndentifier];
+        cell.backgroundColor = UIColorFromRGBA(0xeef2f6, 1.0);
+        
+        UILabel *stockName = [QDTool createLabelWithFrame:CGRectMake(AdjustWidth(2), AdjustHeight(7.5), (ScreenWidth-AdjustWidth(2)-AdjustWidth(5)-AdjustWidth(125)-AdjustWidth(30))/2, AdjustHeight(15.5)) fontColor:[UIColor blackColor] fontSize:AdjustFontSize(12) textAligment:NSTextAlignmentLeft];
+        stockName.tag = 20001;
+        [cell.contentView addSubview:stockName];
+        UIImageView *flagImg = [[UIImageView alloc] initWithFrame:CGRectMake(AdjustWidth(2), CGRectGetMaxY(stockName.frame)+AdjustHeight(2.5), AdjustWidth(12), AdjustHeight(10))];
+        flagImg.tag = 20002;
+        flagImg.image = [UIImage imageNamed:@"comm_market_type_hk"];
+        [cell.contentView addSubview:flagImg];
+        UILabel *stokCode = [QDTool createLabelWithFrame:CGRectMake(CGRectGetMaxX(flagImg.frame), flagImg.frame.origin.y, (ScreenWidth-AdjustWidth(2)*2-AdjustWidth(125)-AdjustWidth(30))/2-CGRectGetMaxX(flagImg.frame), flagImg.frame.size.height) fontColor:UIColorFromRGBA(0x676767, 1.0) fontSize:AdjustFontSize(10) textAligment:NSTextAlignmentLeft];
+        stokCode.tag = 20003;
+        
+        [cell.contentView addSubview:stokCode];
+        
+        UILabel *delegatePrice =  [QDTool createLabelWithFrame:CGRectMake(CGRectGetMaxX(stockName.frame), AdjustHeight(7.5), (ScreenWidth-AdjustWidth(2)-AdjustWidth(5)-AdjustWidth(125)-AdjustWidth(30))/2, AdjustHeight(15.5)) fontColor:[UIColor blackColor] fontSize:AdjustFontSize(14) textAligment:NSTextAlignmentRight];
+        delegatePrice.tag = 20004;
+        
+        [cell.contentView addSubview:delegatePrice];
+        UILabel *avgPrice = [QDTool createLabelWithFrame:CGRectMake(delegatePrice.frame.origin.x, CGRectGetMaxY(delegatePrice.frame)+AdjustHeight(2.5), delegatePrice.frame.size.width, flagImg.frame.size.height) fontColor:UIColorFromRGBA(0x676767, 1.0) fontSize:AdjustFontSize(10) textAligment:NSTextAlignmentRight];
+        avgPrice.tag = 20005;
+        
+        [cell.contentView addSubview:avgPrice];
+        
+        
+        UILabel *quantity = [QDTool createLabelWithFrame:CGRectMake(CGRectGetMaxX(delegatePrice.frame)+AdjustWidth(10), delegatePrice.frame.origin.y, AdjustWidth(125)/2, delegatePrice.frame.size.height) fontColor:[UIColor blackColor] fontSize:AdjustFontSize(14) textAligment:NSTextAlignmentRight];
+        quantity.tag = 20006;
+        [cell.contentView addSubview:quantity];
+        
+        UILabel *time = [QDTool createLabelWithFrame:CGRectMake(quantity.frame.origin.x, CGRectGetMaxY(quantity.frame)+AdjustHeight(2.5), quantity.frame.size.width, flagImg.frame.size.height) fontColor:UIColorFromRGBA(0x676767, 1.0) fontSize:AdjustFontSize(10) textAligment:NSTextAlignmentRight];
+        time.tag = 20007;
+        [cell.contentView addSubview:time];
+        
+        UILabel *staticStatus = [QDTool createLabelWithFrame:CGRectMake(CGRectGetMaxX(quantity.frame)+AdjustWidth(15), quantity.frame.origin.y, quantity.frame.size.width, quantity.frame.size.height) fontColor:[UIColor blackColor] fontSize:AdjustFontSize(14) textAligment:NSTextAlignmentRight];
+        staticStatus.tag = 20008;
+        [cell.contentView addSubview:staticStatus];
+        
+        UILabel *status = [QDTool createLabelWithFrame:CGRectMake(staticStatus.frame.origin.x, CGRectGetMaxY(staticStatus.frame)+AdjustHeight(2.5), staticStatus.frame.size.width, flagImg.frame.size.height) fontColor:UIColorFromRGBA(0xcb271b, 1.0) fontSize:AdjustFontSize(10) textAligment:NSTextAlignmentRight];
+        status.tag = 20009;
+        [cell.contentView addSubview:status];
+        
+    }
+    
+    UILabel *stockName = (UILabel*)[cell viewWithTag:20001];
+    UILabel *stockCode = (UILabel*)[cell viewWithTag:20003];
+    UILabel *delegatePrice = (UILabel*)[cell viewWithTag:20004];
+    UILabel *avgPrice = (UILabel*)[cell viewWithTag:20005];
+    stockName.text = @"新世界发展";
+    stockCode.text = @"00017";
+    delegatePrice.text = @"10.180";
+    avgPrice.text = @"10.180";
+    
+    UILabel *quantity = (UILabel*)[cell viewWithTag:20006];
+    UILabel *time = (UILabel*)[cell viewWithTag:20007];
+    UILabel *staticStatus = (UILabel*)[cell viewWithTag:20008];
+    UILabel *status = (UILabel*)[cell viewWithTag:20009];
+    
+    quantity.text = @"2000";
+    time.text = @"14:30:00";
+    staticStatus.text = @"部分成交";
+    
+    
+    if(indexPath.row %2 ==0){
+        status.text = @"卖出";
+        status.textColor = UIColorFromRGBA(0x1a90f0, 1.0);
+    }
+    else{
+        status.text = @"买入";
+        status.textColor = UIColorFromRGBA(0xcb271b, 1.0);
+    }
+    
+    return cell;
+}
+
+
+#pragma mark - tableView delegate
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    return AdjustHeight(TableViewRowHeight);
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
+    return AdjustHeight(TableViewSectionHeight);
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section{
+    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, ScreenWidth, AdjustHeight(TableViewSectionHeight))];
+    view.backgroundColor = UIColorFromRGBA(0xa6bacb, 1.0);
+    
+    UILabel *titleLabel = [QDTool createLabelWithFrame:CGRectMake(AdjustWidth(14), 0, view.frame.size.width-AdjustWidth(14)*2, view.frame.size.height) fontColor:[UIColor whiteColor] fontSize:AdjustFontSize(13) textAligment:NSTextAlignmentLeft];
+    titleLabel.text = @"已成交订单";
+    [view addSubview:titleLabel];
+    return view;
+}
+
+
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

@@ -1,0 +1,676 @@
+//
+//  ViewController.m
+//  QDBMPloginViewControllerDemo
+//
+//  Created by Weber on 15/6/24.
+//  Copyright (c) 2015年 tsci. All rights reserved.
+//
+
+#import "QDTradeCashViewController.h"
+#import "TTTAttributedLabel.h"
+#import "QDCapitalDistibuteDiagramView.h"
+#import "QDTradeHodingViewController.h"
+#import "QDCompetiton_SelectMarket_PickView.h"
+
+#import "CBStoreHouseRefreshControl.h"
+
+
+#pragma mark - 常量
+static const NSInteger tableRowHeight = 60;  //行高
+static const CGFloat tableSectionHeight = 47;//section 高
+static const NSInteger totalPropertyHeight = 45; //总资产高度
+static const NSInteger holdMarketHeight = 16;  //持仓市值高度
+static const NSInteger holdMarketValueHeight = 25;  //持仓市值  值高度
+static const NSInteger cashTableViewCellHeight = 106;//资金扇形cell高度
+
+@interface QDTradeCashViewController ()<UITableViewDataSource, UITableViewDelegate, QDCompetitonOrder_SelectMarket_PickerViewDelegate>
+
+@property (nonatomic, strong)NSMutableArray *sectorDataSource; //扇形图区域数据源
+@property (nonatomic, strong)NSMutableArray *lessDataSource; //分割块数据源
+@property (nonatomic, strong)UITableView *cashTableView; //资金tableview
+@property (nonatomic, strong)QDTradeHodingViewController *holdingViewController; //持仓controller
+@property (nonatomic, strong)UIButton *dropBar; //拖动按钮
+@property (nonatomic)BOOL flag;
+@property (nonatomic)NSInteger rowNumber;
+@property (nonatomic, strong)QDCompetiton_SelectMarket_PickView *marketPickView;
+@property (nonatomic, strong)QDCompetiton_SelectMarket_PickView *accountPickView;
+
+@property (nonatomic, strong)UIView *cashTableViewHeadView; //账户View
+
+
+@property (nonatomic, strong) CBStoreHouseRefreshControl *storeHouseRefreshControl;
+
+
+@end
+
+@implementation QDTradeCashViewController
+
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view, typically from a nib.
+ 
+    [self initializeData];
+    [self createUI];
+    
+}
+
+#pragma mark - initialize
+
+- (void)initializeData{
+    self.isBankTransaction = YES;
+    self.flag = YES;
+    self.rowNumber = 1;
+    _sectorDataSource = [[NSMutableArray alloc] initWithObjects:
+                         [NSNumber numberWithInt:tCashM_left],
+                         [NSNumber numberWithInt:tCashM_freeze],
+                         [NSNumber numberWithInt:tCashM_stockV],
+                         nil];
+    
+    
+    _lessDataSource  = [[NSMutableArray alloc] initWithObjects:
+                        [NSNumber numberWithInt:tCashM_avai],
+                        [NSNumber numberWithInt:tCashM_credit],
+                        [NSNumber numberWithInt:tCashM_yield],
+                        [NSNumber numberWithInt:tCashM_canTransfer],
+                        [NSNumber numberWithInt:tCashM_canFetch],
+                        [NSNumber numberWithInt:tCashM_t1Left],
+                        [NSNumber numberWithInt:tCashM_t2Left],
+                        [NSNumber numberWithInt:tCashM_check1],
+                        //                    [NSNumber numberWithInt:tCashM_check2],
+                        nil];
+    _dataSouce = [[NSMutableDictionary alloc] initWithCapacity:_lessDataSource.count];
+    [_dataSouce setObject:@"23566" forKey:[NSNumber numberWithInt:tCashM_t2Left]];
+
+}
+
+#pragma  mark - create view
+
+- (void)createUI{
+    
+    
+    _dataSouce = [[NSMutableDictionary alloc] initWithCapacity:self.sectorDataSource.count+self.lessDataSource.count+1];
+    
+    //资金tableview
+    _cashTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    _cashTableView.delegate = self;
+    _cashTableView.dataSource = self;
+    _cashTableView.backgroundColor = UIColorFromRGBA(0x1d2228, 1.0);
+    _cashTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    [self.view addSubview:_cashTableView];
+    
+    
+    self.cashTableView.frame = CGRectMake(0, 0, self.view.frame.size.width, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*4+AdjustHeight(cashTableViewCellHeight));
+
+    
+    //持仓
+    _holdingViewController = [[QDTradeHodingViewController alloc] init];
+    self.holdingViewController.view.frame = CGRectMake(0, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*2, ScreenWidth, self.view.frame.size.height-AdjustHeight(tableSectionHeight)-AdjustHeight(tableRowHeight)*2);
+    [self.view addSubview:_holdingViewController.view];
+    
+    //创建拖动按钮
+    self.dropBar = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.dropBar.frame = CGRectMake((ScreenWidth-AdjustWidth(67))/2, self.holdingViewController.view.frame.origin.y-AdjustHeight(12.5), AdjustWidth(67), AdjustHeight(12.5));
+    self.dropBar.showsTouchWhenHighlighted = YES;
+    [self.dropBar addTarget:self action:@selector(dropBarAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.dropBar setBackgroundImage:[UIImage imageNamed:@"Drop_bar"] forState:UIControlStateNormal];
+    [self.dropBar setBackgroundImage:[UIImage imageNamed:@"Drop bar_hover"] forState:UIControlStateHighlighted];
+    [self.view addSubview:self.dropBar];
+    
+    //给dropbar添加滑动手势
+    UISwipeGestureRecognizer *swipeGestureDown = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(dropBarSwipeDown:)];
+    swipeGestureDown.direction = UISwipeGestureRecognizerDirectionDown;
+    [self.dropBar addGestureRecognizer:swipeGestureDown];
+    
+    UISwipeGestureRecognizer *swipeGestureUp = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(dropBarSwipeUp:)];
+    swipeGestureUp.direction = UISwipeGestureRecognizerDirectionUp;
+    [self.dropBar addGestureRecognizer:swipeGestureUp];
+    
+    
+    //创建市场pickview
+    _marketPickView=[[QDCompetiton_SelectMarket_PickView alloc] initWithParentView:self.view];
+    _marketPickView.pickerViewDelegate=self;
+    _marketPickView.userInteractionEnabled=YES;
+    NSMutableArray *array = [NSMutableArray arrayWithArray:@[MKT_HKG, MKT_USA, MKT_SZA]];
+    self.marketPickView.marketArray = array;
+    self.marketPickView.curMarket = array[0];
+    self.marketPickView.titleLabel.text = NSLocalizedString(@"切换市场", @"");
+    //创建账户pickview
+    _accountPickView=[[QDCompetiton_SelectMarket_PickView alloc] initWithParentView:self.view];
+    _accountPickView.pickerViewDelegate=self;
+    _accountPickView.userInteractionEnabled=YES;
+    array = [NSMutableArray arrayWithArray:@[@"HKG000001",@"USA00002", @"CNA00003"]];
+    _accountPickView.marketArray = array;
+    self.accountPickView.curMarket = array[0];
+    self.accountPickView.titleLabel.text = NSLocalizedString(@"切换账户", @"");
+
+    
+    // Let the show begins
+    self.storeHouseRefreshControl = [CBStoreHouseRefreshControl attachToScrollView:self.cashTableView target:self refreshAction:@selector(refreshTriggered:) plist:@"TSCI" color:[UIColor whiteColor] lineWidth:1.5 dropHeight:70 scale:1 horizontalRandomness:150 reverseLoadingAnimation:YES internalAnimationFactor:0.5];
+}
+
+
+#pragma  mark - 布局
+- (void)viewWillLayoutSubviews{
+    [super viewWillLayoutSubviews];
+    self.cashTableView.frame = CGRectMake(0, 0, self.view.frame.size.width, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*4+AdjustHeight(cashTableViewCellHeight));
+    if(self.flag){
+        self.holdingViewController.view.frame = CGRectMake(0, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*2, ScreenWidth, self.view.frame.size.height-AdjustHeight(tableSectionHeight)-AdjustHeight(tableRowHeight)*2);
+        self.dropBar.frame = CGRectMake((ScreenWidth-AdjustWidth(67))/2, self.holdingViewController.view.frame.origin.y-AdjustHeight(12.5), AdjustWidth(67), AdjustHeight(12.5));
+    }
+    
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+#pragma mark - pickview delegate
+
+- (void)selectMarketCloseWithPicker:(QDCompetiton_SelectMarket_PickView*)datePicker{
+    [datePicker dismiss];
+    UIButton *market = (UIButton*)[self.cashTableViewHeadView viewWithTag:10004];
+    market.enabled = YES;
+    UIButton *account = (UIButton*)[self.cashTableViewHeadView viewWithTag:10005];
+    account.enabled = YES;
+
+}
+
+- (void)selectMarketRowWithPicker:(QDCompetiton_SelectMarket_PickView*)dataPicker row:(NSInteger)row{
+    if([dataPicker isEqual:self.marketPickView]){
+        UIImageView *flagImg = (UIImageView*)[self.cashTableViewHeadView viewWithTag:100041];
+        UIButton *market = (UIButton*)[self.cashTableViewHeadView viewWithTag:10004];
+        self.marketPickView.curMarket = self.marketPickView.marketArray[row];
+        flagImg.image = [self getFlagImage];
+        [market setTitle:[self getMarketButtonTitle] forState:UIControlStateNormal];
+    }else{
+        UIButton *account = (UIButton*)[self.cashTableViewHeadView viewWithTag:10005];
+        self.accountPickView.curMarket = self.accountPickView.marketArray[row];
+        [account setTitle:[self getAccountButtonTitle] forState:UIControlStateNormal];
+    }
+    
+    [dataPicker dismiss];
+    UIButton *market = (UIButton*)[self.cashTableViewHeadView viewWithTag:10004];
+    market.enabled = YES;
+    UIButton *account = (UIButton*)[self.cashTableViewHeadView viewWithTag:10005];
+    account.enabled = YES;
+}
+
+
+
+#pragma mark - table view datasource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    
+    NSInteger row =  self.lessDataSource.count/3;
+    NSInteger less = self.lessDataSource.count%3;
+    
+    
+    if(self.isBankTransaction)
+        return less == 0 ? (row+self.rowNumber+1) : (row+self.rowNumber+1);
+    else
+        return less == 0 ? (row+self.rowNumber) : (row+self.rowNumber+1);
+    
+    
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    if(indexPath.row == 0){
+        static NSString *cellInditifer0 = @"cellInditifer0";
+        UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellInditifer0];
+        if(cell == nil){
+            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:cellInditifer0];
+           //总资产
+            UILabel *totalProperty = [[UILabel alloc] initWithFrame:CGRectMake(7.5, AdjustHeight(7), AdjustWidth(56), AdjustHeight(16))];
+            totalProperty.textColor = UIColorFromRGBA(0x676767, 1.0);
+            totalProperty.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+            totalProperty.textAlignment = NSTextAlignmentLeft;
+            totalProperty.adjustsFontSizeToFitWidth = YES;
+            totalProperty.tag = 100001;
+            [cell.contentView addSubview:totalProperty];
+            //value
+       
+            TTTAttributedLabel *totalPropertyValue = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(7.5, AdjustHeight(12), ScreenWidth-7.5*2, AdjustHeight(totalPropertyHeight))];
+            totalPropertyValue.adjustsFontSizeToFitWidth = YES;
+            totalPropertyValue.tag = 100002;
+            [cell.contentView addSubview:totalPropertyValue];
+        }
+        UILabel *totalProperty = (UILabel*)[cell viewWithTag:100001];
+        totalProperty.text = [[QDStockSingletonConfigTools sharedManager] getMemberName:tCashM_total];//@"总资产(港币)";
+        TTTAttributedLabel *totalPropertyValue = (TTTAttributedLabel*)[cell viewWithTag:100002];
+        [totalPropertyValue setText:[QDTool getAnomalyString:-12345567.00 integerColor:UIColorFromRGBA(0xcb271b, 1.0) decimalColor:UIColorFromRGBA(0x676767, 1.0) integerFontSize:AdjustFontSize(30) decimalFontSize:AdjustFontSize(15) haveSufix:0 textAlignment:NSTextAlignmentCenter]];
+        return cell;
+    }
+    if(!self.flag){
+        if(indexPath.row == 1){
+            static NSString *cellInditifer1 = @"cellInditifer1";
+            QDCapitalDistibuteDiagramCell *cell = [tableView dequeueReusableCellWithIdentifier:cellInditifer1];
+            if(cell == nil){
+                cell = [[QDCapitalDistibuteDiagramCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil withRadius:AdjustHeight((cashTableViewCellHeight-12)/2)];
+            }
+            cell.dataSource = self.sectorDataSource;
+            [cell resetLeftTotal:900000.00 freezeCapital:750000.00 totalMarketValue:-1350000.00];
+            
+            return cell;
+
+        }
+    }
+    UITableViewCell *cell;
+    //如果有银证转账
+    if(self.isBankTransaction){
+        //如果是最后一行
+        if(indexPath.row-self.rowNumber==self.lessDataSource.count/3+(self.lessDataSource.count%3?1:1)-1){
+            cell = [self createTableViewCellLast];
+        }else{//不是最后一行
+            cell = [self createTableViewCellNormal];
+        }
+    }else{//如果没有银证转账
+        cell = [self createTableViewCellNormal];
+    }
+    
+    int count = 0;
+    if (self.lessDataSource.count >0 && self.lessDataSource.count%3 ==0) {
+        count = 3;
+    }else{
+        if((indexPath.row-self.rowNumber)<self.lessDataSource.count/3)
+            count = 3;
+        else
+            count = self.lessDataSource.count%3;
+    }
+    for (int i=0; i<count; i++) {
+        UILabel *totalBuy = (UILabel*)[cell viewWithTag:10001+i];
+        if(self.lessDataSource!=nil && self.lessDataSource.count>(indexPath.row-self.rowNumber)*3+i){
+            totalBuy.text = [[QDStockSingletonConfigTools sharedManager] getMemberName:[self.lessDataSource[(indexPath.row-self.rowNumber)*3+i] intValue]];
+        }
+        
+        TTTAttributedLabel  *totalBuyValue = (TTTAttributedLabel*)[cell viewWithTag:20001+i];
+        if(self.lessDataSource!=nil && self.lessDataSource.count>(indexPath.row-self.rowNumber)*3+i){
+            NSString *tv = [self.dataSouce objectForKey:self.lessDataSource[(indexPath.row-self.rowNumber)*3+i]];
+            if(tv != nil){
+                if([self.lessDataSource[(indexPath.row-self.rowNumber)*3+i] intValue] ==  tCashM_yield)
+                    [totalBuyValue setText:[QDTool getAnomalyString:[tv doubleValue] integerColor:UIColorFromRGBA(0xcb271b, 1.0) decimalColor:UIColorFromRGBA(0x676767, 1.0) integerFontSize:AdjustFontSize(16) decimalFontSize:AdjustFontSize(10) haveSufix:1 textAlignment:NSTextAlignmentLeft]];
+                else
+                    [totalBuyValue setText:[QDTool getAnomalyString:[tv doubleValue] integerColor:[UIColor blackColor] decimalColor:UIColorFromRGBA(0x676767, 1.0) integerFontSize:AdjustFontSize(16) decimalFontSize:AdjustFontSize(10) haveSufix:0 textAlignment:NSTextAlignmentLeft]];
+            }else{
+                [totalBuyValue setText:[QDTool getAnomalyString:-130007822000.023 integerColor:UIColorFromRGBA(0xcb271b, 1.0) decimalColor:UIColorFromRGBA(0x676767, 1.0) integerFontSize:AdjustFontSize(16) decimalFontSize:AdjustFontSize(10) haveSufix:1 textAlignment:NSTextAlignmentLeft]];
+            }
+            
+        }
+        
+
+        UIImageView *seperatorLine = (UIImageView*)[cell viewWithTag:30001+i];
+        //如果是第一行
+        if(i == 2)
+            continue;
+        if(indexPath.row-self.rowNumber == 0){
+            seperatorLine.frame =  CGRectMake(ScreenWidth/3*(i+1)-1, totalBuy.frame.origin.y, 1, AdjustHeight(tableRowHeight)-totalBuy.frame.origin.y);
+        }
+        //如果是最后一行
+        else if(indexPath.row-self.rowNumber == (self.isBankTransaction?((self.lessDataSource.count+1)/3+((self.lessDataSource.count+1)%3?1:0)-1):((self.lessDataSource.count)/3+((self.lessDataSource.count)%3?1:0)-1))){
+                seperatorLine.frame =  CGRectMake(ScreenWidth/3*(i+1)-1, 0, 1, AdjustHeight(tableRowHeight)-totalBuy.frame.origin.y);
+        }else{
+                seperatorLine.frame =  CGRectMake(ScreenWidth/3*(i+1)-1, 0, 1, AdjustHeight(tableRowHeight));
+        }
+    }
+    return cell;
+    
+}
+
+#pragma mark - create TableViewCell
+//普通的cell
+- (UITableViewCell*)createTableViewCellNormal{
+    static NSString *cellInditifer2 = @"cellInditifer2";
+    UITableViewCell *cell = [self.cashTableView dequeueReusableCellWithIdentifier:cellInditifer2];
+    if(cell == nil){
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellInditifer2];
+        //static label
+        for (int i=0; i<3; i++) {
+            //static label
+            UILabel *totalBuy = [[UILabel alloc] initWithFrame:CGRectMake(7.5+ScreenWidth/3*i, 7.5, ScreenWidth/3-7.5, AdjustHeight(holdMarketHeight))];
+            totalBuy.textColor = UIColorFromRGBA(0x676767, 1.0);
+            totalBuy.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+            totalBuy.textAlignment = NSTextAlignmentLeft;
+            totalBuy.tag = 10001+i;
+            [cell.contentView addSubview:totalBuy];
+            
+            //value label
+            TTTAttributedLabel  *totalBuyValue = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(7.5+ScreenWidth/3*i, CGRectGetMaxY(totalBuy.frame), ScreenWidth/3-7.5, AdjustHeight(holdMarketValueHeight))];
+            totalBuyValue.adjustsFontSizeToFitWidth = YES;
+            totalBuyValue.tag = 20001+i;
+            [cell.contentView addSubview:totalBuyValue];
+            
+            //seperator line
+            if(i != 2){
+                UIImageView *line = [[UIImageView alloc] init];
+                line.tag = 30001+i;
+                line.image = [UIImage imageNamed:@"verticalbar"];
+                [cell.contentView addSubview:line];
+            }
+            
+        }
+    }
+    return cell;
+
+}
+//有银证转账的最后一行cell
+- (UITableViewCell*)createTableViewCellLast{
+    static NSString *cellInditifer3 = @"cellInditifer3";
+    UITableViewCell *cell = [self.cashTableView dequeueReusableCellWithIdentifier:cellInditifer3];
+    if(cell == nil){
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellInditifer3];
+        int i=0;
+        for (; i<self.lessDataSource.count%3; i++) {
+            //static label
+            UILabel *totalBuy = [[UILabel alloc] initWithFrame:CGRectMake(7.5+ScreenWidth/3*i, 7.5, ScreenWidth/3-7.5, AdjustHeight(holdMarketHeight))];
+            totalBuy.textColor = UIColorFromRGBA(0x676767, 1.0);
+            totalBuy.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+            totalBuy.textAlignment = NSTextAlignmentLeft;
+            totalBuy.tag = 10001+i;
+            [cell.contentView addSubview:totalBuy];
+            
+            //value label
+            TTTAttributedLabel  *totalBuyValue = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(7.5+ScreenWidth/3*i, CGRectGetMaxY(totalBuy.frame), ScreenWidth/3-7.5, AdjustHeight(holdMarketValueHeight))];
+            totalBuyValue.adjustsFontSizeToFitWidth = YES;
+            totalBuyValue.tag = 20001+i;
+            [cell.contentView addSubview:totalBuyValue];
+            
+            //seperator line
+            if(i != 2){
+                UIImageView *line = [[UIImageView alloc] init];
+                line.tag = 30001+i;
+                line.image = [UIImage imageNamed:@"verticalbar"];
+                [cell.contentView addSubview:line];
+            }
+        }
+        
+        UIButton *backgroundBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [backgroundBtn setBackgroundImage:[UIImage imageNamed:@"bank_transform_hover"] forState:UIControlStateHighlighted];
+        backgroundBtn.frame = CGRectMake(ScreenWidth/3*i, 0, ScreenWidth/3, AdjustHeight(tableRowHeight));
+        [backgroundBtn addTarget:self action:@selector(bankTransformAction:) forControlEvents:UIControlEventTouchUpInside];
+        
+        UIImageView *bankTransformImg = [[UIImageView alloc] initWithFrame:CGRectMake(7.5, (AdjustHeight(tableRowHeight)-AdjustHeight(16))/2, AdjustWidth(30), AdjustHeight(16))];
+        
+        bankTransformImg.image = [UIImage imageNamed:@"bank-transfer"];
+        [backgroundBtn addSubview:bankTransformImg];
+        
+        UILabel *bankTransformStaticLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(bankTransformImg.frame)+2, (AdjustHeight(tableRowHeight)-AdjustHeight(16))/2, ScreenWidth/3-7.5-2-AdjustWidth(30), AdjustHeight(16))];
+        bankTransformStaticLabel.textAlignment = NSTextAlignmentLeft;
+        bankTransformStaticLabel.textColor = [UIColor blackColor];
+        bankTransformStaticLabel.font = [UIFont systemFontOfSize:AdjustFontSize(16)];
+        bankTransformStaticLabel.adjustsFontSizeToFitWidth = YES;
+        bankTransformStaticLabel.text = @"银证转账";
+        [backgroundBtn addSubview:bankTransformStaticLabel];
+        
+        [cell.contentView addSubview:backgroundBtn];
+        
+        if(i != 2){
+            UIImageView *line = [[UIImageView alloc] init];
+            line.frame = CGRectMake(ScreenWidth/3*(i+1)-1, 0, 1, tableRowHeight-AdjustHeight(9));
+            line.image = [UIImage imageNamed:@"verticalbar"];
+            [cell.contentView addSubview:line];
+        }
+    }
+    return cell;
+    
+}
+
+#pragma mark - table view delegate
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    if(!self.flag){
+        if(indexPath.row == 1)
+            return AdjustHeight(cashTableViewCellHeight);
+        else
+            return AdjustHeight(tableRowHeight);
+    }else{
+        return AdjustHeight(tableRowHeight);
+    }
+}
+
+- (BOOL)tableView:(UITableView *)tableView shouldHighlightRowAtIndexPath:(NSIndexPath *)indexPath{
+    return NO;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
+    return AdjustHeight(tableSectionHeight);
+}
+
+#pragma mark - 账户信息
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section{
+    if(_cashTableViewHeadView == nil)
+        _cashTableViewHeadView = [[UIView alloc] init];
+    self.cashTableViewHeadView.backgroundColor = [self getHeadViewBackgroundColor];
+    self.cashTableViewHeadView.frame = CGRectMake(0, 0, ScreenWidth, AdjustHeight(tableSectionHeight));
+    
+    
+    UIImageView *stockLogo = [[UIImageView alloc] initWithFrame:CGRectMake(AdjustWidth(5), AdjustHeight((tableSectionHeight-36)/2), AdjustWidth(36), AdjustHeight(36))];
+    stockLogo.tag = 10001;
+    stockLogo.image = [UIImage imageNamed:@"logo_72"];
+    [self.cashTableViewHeadView addSubview:stockLogo];
+    UILabel *userNameLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(stockLogo.frame)+AdjustWidth(5), AdjustHeight((tableSectionHeight-32)/2),AdjustWidth(46), AdjustHeight(holdMarketHeight))];
+    userNameLabel.tag = 10002;
+    userNameLabel.textColor = [UIColor whiteColor];
+    userNameLabel.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+    userNameLabel.textAlignment = NSTextAlignmentLeft;
+    userNameLabel.text = @"Weber";
+    [self.cashTableViewHeadView addSubview:userNameLabel];
+
+     UILabel *userTypeLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(stockLogo.frame)+AdjustWidth(5), CGRectGetMaxY(userNameLabel.frame), AdjustWidth(46), AdjustHeight(holdMarketHeight))];
+    userTypeLabel.tag = 10003;
+    userTypeLabel.textColor = UIColorFromRGBA(0x4d9bf8, 1.0);
+    userTypeLabel.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+    userTypeLabel.textAlignment = NSTextAlignmentLeft;
+    userTypeLabel.text = @"[信用账户]";
+    [self.cashTableViewHeadView addSubview:userTypeLabel];
+    
+    
+   
+    
+    UIButton *marketButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    marketButton.tag = 10004;
+    UIButton *accountButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    accountButton.tag = 10005;
+    
+    //if 多账户
+    marketButton.frame = CGRectMake(CGRectGetMaxX(userNameLabel.frame)+AdjustWidth(10), AdjustHeight((tableSectionHeight-25)/2), AdjustWidth(75), AdjustHeight(25));
+    accountButton.frame = CGRectMake(CGRectGetMaxX(marketButton.frame)+AdjustWidth(5), AdjustHeight((tableSectionHeight-25)/2), AdjustWidth(128), AdjustHeight(25));
+    //if 单账户  先不要删，因为需求分析中有这种可能。。呵呵呵呵。。。
+//    accountButton.frame = CGRectMake(CGRectGetMaxX(userNameLabel.frame)+AdjustWidth(10), AdjustHeight((tableSectionHeight-25)/2), AdjustWidth(128), AdjustHeight(25));
+//    marketButton.frame = CGRectMake(CGRectGetMaxX(accountButton.frame)+AdjustWidth(5), AdjustHeight((tableSectionHeight-25)/2), AdjustWidth(75), AdjustHeight(25));
+    
+    //市场
+    [marketButton setBackgroundImage:[UIImage imageNamed:@"market_button"] forState:UIControlStateNormal];
+    [marketButton setBackgroundImage:[UIImage imageNamed:@"market_button_hover"] forState:UIControlStateHighlighted];
+    [marketButton setTitleColor:UIColorFromRGBA(0x315c7f, 1.0) forState:UIControlStateNormal];
+    marketButton.titleLabel.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+    [marketButton setTitle:[self getMarketButtonTitle] forState:UIControlStateNormal];
+    [marketButton addTarget:self action:@selector(marketButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+    UIImageView *flagView = [[UIImageView alloc] initWithFrame:CGRectMake(AdjustWidth(5), AdjustHeight(5), AdjustWidth(22), AdjustHeight(15))];
+    flagView.image = [self getFlagImage];
+    flagView.tag = 100041;
+     marketButton.titleEdgeInsets = UIEdgeInsetsMake(0, AdjustWidth(11), 0, 0);
+    [marketButton addSubview:flagView];
+    [self.cashTableViewHeadView addSubview:marketButton];
+
+    
+    //账户
+   
+    [accountButton setBackgroundImage:[UIImage imageNamed:@"account_button"] forState:UIControlStateNormal];
+    [accountButton setBackgroundImage:[UIImage imageNamed:@"account_button_hover"] forState:UIControlStateHighlighted];
+    [accountButton setTitleColor:UIColorFromRGBA(0x315c7f, 1.0) forState:UIControlStateNormal];
+    accountButton.titleLabel.font = [UIFont systemFontOfSize:AdjustFontSize(10)];
+    accountButton.titleLabel.textAlignment = NSTextAlignmentCenter;
+    [accountButton setTitle:[self getAccountButtonTitle] forState:UIControlStateNormal];
+    [accountButton addTarget:self action:@selector(accountButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.cashTableViewHeadView addSubview:accountButton];
+
+
+    return self.cashTableViewHeadView;
+}
+
+
+
+#pragma mark- button action
+
+- (void)dropBarSwipeDown:(UISwipeGestureRecognizer*)swipeGesture{
+    
+    if(self.holdingViewController.view.frame.origin.y <= AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*2+5){
+        self.flag = YES;
+        [self dropBarAction:nil];
+    }
+}
+
+- (void)dropBarSwipeUp:(UISwipeGestureRecognizer*)swipeGesture{
+    if(self.holdingViewController.view.frame.origin.y >= AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*4-5){
+        self.flag = NO;
+        [self dropBarAction:nil];
+    }
+    
+}
+
+- (void)dropBarAction:(UIButton*)button{
+    
+    self.flag = 1 - self.flag;
+    if(!self.flag){
+        self.rowNumber = 2;
+        self.cashTableView.separatorStyle = UITableViewCellSeparatorStyleSingleLine;
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:1 inSection:0];
+        [self.cashTableView beginUpdates];
+        [self.cashTableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationTop];
+        [self.cashTableView endUpdates];
+        [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+            self.holdingViewController.view.frame = CGRectMake(0, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*4+AdjustHeight(cashTableViewCellHeight), ScreenWidth, self.view.frame.size.height-AdjustHeight(tableSectionHeight)-AdjustHeight(tableRowHeight)*2);
+            self.dropBar.frame = CGRectMake((ScreenWidth-AdjustWidth(67))/2, self.holdingViewController.view.frame.origin.y-AdjustHeight(12.5), AdjustWidth(67), AdjustHeight(12.5));
+        }completion:^(BOOL finish){
+            if(finish){
+                self.holdingViewController.view.frame = CGRectMake(0, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*4+AdjustHeight(cashTableViewCellHeight), ScreenWidth, self.view.frame.size.height-AdjustHeight(tableSectionHeight)-AdjustHeight(tableRowHeight)*4-AdjustHeight(cashTableViewCellHeight));
+            }
+        }];
+        
+    }else{
+        self.rowNumber = 1;
+        self.cashTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:1 inSection:0];
+        [self.cashTableView beginUpdates];
+        [self.cashTableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationTop];
+        [self.cashTableView endUpdates];
+        [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+            self.holdingViewController.view.frame = CGRectMake(0, AdjustHeight(tableSectionHeight)+AdjustHeight(tableRowHeight)*2, ScreenWidth, self.view.frame.size.height-AdjustHeight(tableSectionHeight)-AdjustHeight(tableRowHeight)*2);
+            self.dropBar.frame = CGRectMake((ScreenWidth-AdjustWidth(67))/2, self.holdingViewController.view.frame.origin.y-AdjustHeight(12.5), AdjustWidth(67), AdjustHeight(12.5));
+        }completion:^(BOOL finish){
+            
+        }];
+    }
+    
+}
+
+- (void)bankTransformAction:(UIButton*)button{
+    NSLog(@"银证转账点击");
+}
+
+//账户点击
+- (void)accountButtonAction:(UIButton*)button{
+    UIButton *market = (UIButton*)[self.cashTableViewHeadView viewWithTag:10004];
+    UIButton *account = (UIButton*)[self.cashTableViewHeadView viewWithTag:10005];
+    
+    if(market.enabled == NO)
+        return;
+    
+    [self.accountPickView show];
+     account.enabled = NO;
+
+   
+    
+   
+}
+//市场点击
+- (void)marketButtonAction:(UIButton*)button{
+    UIButton *market = (UIButton*)[self.cashTableViewHeadView viewWithTag:10004];
+    UIButton *account = (UIButton*)[self.cashTableViewHeadView viewWithTag:10005];
+   
+    if(account.enabled == NO)
+        return;
+    [self.marketPickView show];
+    market.enabled = NO;
+    
+}
+#pragma mark - 根据账户填充国旗
+- (UIImage*)getFlagImage{
+    return [[QDStockSingletonConfigTools sharedManager] getFlagImageWithNamed:self.marketPickView.curMarket];
+
+}
+
+#pragma mark - 根据账户填充显示信息
+
+- (NSString*)getMarketButtonTitle{
+    return [[QDStockSingletonConfigTools sharedManager] getMarketWithNamed:self.marketPickView.curMarket];
+}
+
+
+#pragma mark - 根据账户填充显示信息
+- (NSString*)getAccountButtonTitle{
+    return [[QDStockSingletonConfigTools sharedManager] getMarketWithNamed:self.accountPickView.curMarket];
+}
+
+
+- (UIColor*)getHeadViewBackgroundColor{
+    
+    //    if([[QDTool getCurrentSkin] isEqualToString:QDBLACKSKIP]){
+    //if  黑色
+    return  UIColorFromRGBA(0x1d2228, 1.0); //todo
+    //    }
+    //    }else{
+    //else 蓝色
+//    return [QDTool hexStringToColor:@"#315c7f"];
+    //    }
+   
+    
+}
+
+#pragma mark - Notifying refresh control of scrolling
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    [self.storeHouseRefreshControl scrollViewDidScroll];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    [self.storeHouseRefreshControl scrollViewDidEndDragging];
+}
+
+#pragma mark - Listening for the user to trigger a refresh
+
+- (void)refreshTriggered:(id)sender
+{
+    [self performSelector:@selector(finishRefreshControl) withObject:nil afterDelay:2 inModes:@[NSRunLoopCommonModes]];
+}
+
+- (void)finishRefreshControl
+{
+    [self.storeHouseRefreshControl finishingLoading];
+}
+
+-(UIStatusBarStyle)preferredStatusBarStyle
+{
+    return UIStatusBarStyleLightContent;
+}
+
+
+
+
+#pragma mark - 换肤函数
+
+-(void)resetSkinColor
+{
+//    if([[QDTool getCurrentSkin] isEqualToString:QDBLACKSKIP]){
+//            self.tableViewHeadCell.backgroundColor = [QDTool hexStringToColor:@"#1d2228"];
+//    }
+//    }else{
+//          self.tableViewHeadCell.backgroundColor = [QDTool hexStringToColor:@"#315c7f"];
+//    }
+
+}
+
+@end
